@@ -4,9 +4,12 @@ use steamworks::PublishedFileId;
 
 macro_rules! check_installed {
 	($ugc:ident, $workshop_id:expr) => {
-		if let (Some(info), true) = (
+		if let (Some(info), true, false, false, false) = (
 			$ugc.item_install_info($workshop_id),
 			$ugc.item_state($workshop_id).contains(steamworks::ItemState::INSTALLED),
+			$ugc.item_state($workshop_id).contains(steamworks::ItemState::NEEDS_UPDATE),
+			$ugc.item_state($workshop_id).contains(steamworks::ItemState::DOWNLOADING),
+			$ugc.item_state($workshop_id).contains(steamworks::ItemState::DOWNLOAD_PENDING),
 		) {
 			Some(info.folder)
 		} else {
@@ -133,17 +136,6 @@ pub mod downloads {
 			let lua = crate::lua();
 			let ugc = self.server.ugc();
 
-			{
-				let cache_path = format!("garrysmod/cache/srcds/{}.gma", workshop_id);
-				if PathBuf::from(&cache_path).is_file() {
-					return self::callback(lua, callback, workshop_id, Some(cache_path));
-				}
-			}
-
-			if let Some(folder) = check_installed!(ugc, workshop_id) {
-				return self::callback(lua, callback, workshop_id, Some(folder));
-			}
-
 			if !self.server.is_logged_in() {
 				unsafe {
 					lua.get_global(lua_string!("hook"));
@@ -171,10 +163,6 @@ pub mod downloads {
 					workshop_id
 				);
 				return self::callback(lua, callback, workshop_id, None);
-			}
-
-			if let Some(folder) = check_installed!(ugc, workshop_id) {
-				return self::callback(lua, callback, workshop_id, Some(folder));
 			}
 
 			println!("[gmsv_workshop] Downloading {}", workshop_id);
