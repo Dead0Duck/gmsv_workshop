@@ -185,7 +185,7 @@ pub mod downloads {
 
 		extern "C-unwind" fn process_queued(lua: gmod::lua::State) -> i32 {
 			crate::STEAM.with(|steam| {
-				let steam = steam.get_mut();
+				let mut steam = steam.borrow_mut();
 
 				if !steam.server.is_logged_in() {
 					return 0;
@@ -210,7 +210,7 @@ pub mod downloads {
 
 		unsafe extern "C-unwind" fn poll(lua: gmod::lua::State) -> i32 {
 			crate::STEAM.with(|steam| {
-				let steam = steam.get_mut();
+				let mut steam = steam.borrow_mut();
 				let ugc = steam.server.ugc();
 
 				steam.pending.drain_filter(|workshop_id, callback| {
@@ -349,7 +349,7 @@ use super::*;
 	}
 
 	impl Steam {
-		pub fn file_info(&self, workshop_id: PublishedFileId, callback: LuaReference) {
+		pub fn file_info(&mut self, workshop_id: PublishedFileId, callback: LuaReference) {
 			let ugc = self.server.ugc();
 
 			#[cfg(debug_assertions)]
@@ -383,12 +383,7 @@ impl Steam {
 	pub fn init() -> Steam {
 		let (server, callbacks) = unsafe {
 			steamworks::Server::from_raw({
-				#[cfg(target_pointer_width = "32")] {
-					steamworks::sys::SteamAPI_SteamGameServer_v015()
-				}
-				#[cfg(target_pointer_width = "64")] {
-					steamworks::sys::SteamAPI_SteamGameServer_v013()
-				}
+				steamworks::sys::SteamAPI_SteamGameServer_v015()
 			})
 		};
 
